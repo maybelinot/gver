@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Author: Eduard Trott
+# @Date:   2015-09-17 13:10:09
+# @Email:  etrott@redhat.com
+# @Last modified by:   etrott
+# @Last Modified time: 2015-09-17 13:15:50
+
+from __future__ import absolute_import #, unicode_literals
+
+# INTERNAL PYTHON MODULES
+import argparse
+import logging
+
+from gver.utils import logr, get_credentials
+from gver.gfiles import get_file_id
+from gver.gver import history
+
+
+def parse_cli():
+    '''
+    gver "public" CLI API
+    '''
+    # Setup the argparser
+    parser = argparse.ArgumentParser(
+        description='Control version of Google files')
+
+    parser.add_argument('filename', metavar='f', nargs='+',
+                        help='Full path to file or file id')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="turn verbose logging ON")
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="turn debug logging ON")
+
+    args = vars(parser.parse_args())  # parse and load args as a dict
+
+    # Go ahead and deal with logging debug/verbosity setting
+    if args['debug']:
+        # logr = logging.getLogger()  # get root logger
+        logr.setLevel(logging.DEBUG)
+    elif args['verbose']:
+        logr.setLevel(logging.INFO)
+    else:
+        logr.setLevel(logging.WARN)
+
+    return args
+
+if __name__ == "__main__":
+    # Load the user config file from their home directory
+    args = parse_cli()
+
+    filename = args['filename'][0]
+
+    credentials = get_credentials()
+    file_id = get_file_id(credentials, filename)
+    if file_id:
+        print history(credentials, file_id)
+    else:
+        logr.error('File does not exist')

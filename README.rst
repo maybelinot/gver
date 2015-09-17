@@ -1,9 +1,3 @@
-.. image:: https://travis-ci.org/maybelinot/gver.png
-   :target: https://travis-ci.org/maybelinot/gver
-
-.. image:: https://coveralls.io/repos/maybelinot/gver/badge.svg
-  :target: https://coveralls.io/r/maybelinot/gver
-
 
 INSTALLATION
 ============
@@ -54,15 +48,3 @@ and generate credentials. Please use your web browser and go to
 * Click on **"Download JSON"** button and store the downloaded file on your file system. Please be aware, the file contains your private credentials, so take care of the file in the same way you care of your private SSH key; i.e. move downloaded JSON file to **~/.gdrive_private**. 
 
 * Then, the first time you run it your browswer window will open a google authorization request page. Approve authorization and then the credentials will work as expected.
-
-
-USAGE
-=====
-???
-
-DEVELOPMENT
-===========
-Install the supplied githooks; eg::
-
-    ln -s ~/repos/df2gspread/_githooks/commit-msg ~/repos/df2gspread/.git/hooks/commit-msg
-    ln -s ~/repos/df2gspread/_githooks/pre-commit ~/repos/df2gspread/.git/hooks/pre-commit

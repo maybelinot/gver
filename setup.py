@@ -4,7 +4,7 @@
 # @Date:   2015-09-04 14:04:46
 # @Email:  etrott@redhat.com
 # @Last modified by:   etrott
-# @Last Modified time: 2015-09-17 13:47:40
+# @Last Modified time: 2015-09-17 14:42:56
 
 
 # python-2.7 setup.py build
@@ -32,7 +32,6 @@ __irequires__ = [
     # CORE DEPENDENCIES
     'argparse==1.3.0',
     'google-api-python-client==1.4.1',
-    'gspread==0.2.5',
     'oauth2client>=1.4.12',
 ]
 __xrequires__ = {

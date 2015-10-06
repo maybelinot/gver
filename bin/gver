@@ -6,15 +6,21 @@
 # @Last modified by:   etrott
 # @Last Modified time: 2015-09-17 13:15:50
 
-from __future__ import absolute_import #, unicode_literals
+from __future__ import absolute_import  # , unicode_literals
 
 # INTERNAL PYTHON MODULES
 import argparse
 import logging
+import httplib2
+from apiclient import errors
+from apiclient import discovery
+import pprint
 
-from gver.utils import logr, get_credentials
+from gver.utils import logr, get_credentials, config, update_config
 from gver.gfiles import get_file_id
-from gver.gver import history
+from gver.gver import get_file_content, update_file
+
+pp = pprint.PrettyPrinter(indent=4)
 
 
 def parse_cli():
@@ -25,13 +31,21 @@ def parse_cli():
     parser = argparse.ArgumentParser(
         description='Control version of Google files')
 
-    parser.add_argument('filename', metavar='f', nargs='+',
-                        help='Full path to file or file id')
+    parser.add_argument('FILE', help='Full path to file or file id')
+
+    subparsers = parser.add_subparsers(dest='act', help="Actions")
+
+    checkout = subparsers.add_parser('checkout')
+
+    checkout.add_argument('version', help='File version name')
+    checkout.add_argument('-n', '--new', action='store_true',
+                          help="Create new version")
+    sync = subparsers.add_parser('sync')
+
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="turn verbose logging ON")
     parser.add_argument('-d', '--debug', action='store_true',
                         help="turn debug logging ON")
-
     args = vars(parser.parse_args())  # parse and load args as a dict
 
     # Go ahead and deal with logging debug/verbosity setting
@@ -49,11 +63,56 @@ if __name__ == "__main__":
     # Load the user config file from their home directory
     args = parse_cli()
 
-    filename = args['filename'][0]
+    filename = args['FILE']
 
     credentials = get_credentials()
-    file_id = get_file_id(credentials, filename)
-    if file_id:
-        print history(credentials, file_id)
-    else:
-        logr.error('File does not exist')
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('drive', 'v2', http=http)
+
+    try:
+        # if gfile is file_id
+        service.files().get(fileId=filename).execute()
+        file_id = filename
+    except:
+        # else look for file_id in drive
+        file_id = get_file_id(credentials, filename)
+
+    if not file_id:
+        raise RuntimeError('File %s does not exist' % (filename))
+
+    # revisions = retrieve_revisions(service, file_id)
+    old_file = get_file_content(http, file_id)
+
+    if args['act'] == "sync":
+        if file_id not in config:
+            config[file_id] = {}
+            config[file_id]['master'] = {}
+            config[file_id]['master']['data'] = old_file
+            config[file_id]['master']['active'] = True
+
+    if args['act'] == "checkout":
+        if file_id not in config:
+            raise RuntimeError("File does not synced")
+        for ver in config[file_id]:
+            if config[file_id][ver]['active']:
+                to_deact = ver
+        if args['new']:
+            if args['version'] not in config[file_id].keys():
+                config[file_id][args['version']] = {}
+                config[file_id][args['version']]['data'] = old_file
+                config[file_id][args['version']]['active'] = True
+                config[file_id][to_deact]['data'] = old_file
+                config[file_id][to_deact]['active'] = False
+            else:
+                raise RuntimeError("Version already exist")
+        else:
+            if args['version'] in config[file_id].keys():
+                config[file_id][to_deact]['data'] = old_file
+                config[file_id][to_deact]['active'] = False
+                file_content = config[file_id][args['version']]['data']
+                update_file(service, file_id, file_content)
+                config[file_id][args['version']]['active'] = True
+            else:
+                raise RuntimeError("Version does not exist")
+
+    update_config(config)

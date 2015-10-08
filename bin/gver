@@ -11,6 +11,7 @@ from __future__ import absolute_import  # , unicode_literals
 # INTERNAL PYTHON MODULES
 import argparse
 import logging
+from datetime import datetime as dt
 import httplib2
 from apiclient import errors
 from apiclient import discovery
@@ -42,6 +43,9 @@ def parse_cli():
                           help="Create new version")
     sync = subparsers.add_parser('sync')
 
+    status = subparsers.add_parser('status')
+    status.add_argument('version', help='File name', nargs='?')
+
     call = subparsers.add_parser('call')
     call.add_argument('name', help='File name')
 
@@ -61,6 +65,10 @@ def parse_cli():
         logr.setLevel(logging.WARN)
 
     return args
+
+
+def get_file_versions(file_id, config):
+    return [i['ver'].keys() for _, i in config.iteritems() if _ == file_id][0]
 
 
 def get_file_id(filename, config, service, credentials):
@@ -100,15 +108,32 @@ if __name__ == "__main__":
             raise RuntimeError("File %s does not synced" % (file_id))
         config[file_id]['name'] = args['name']
 
-    if args['act'] == "sync":
+    elif args['act'] == "status":
+        if args['version']:
+            if args['version'] in config[file_id]['ver'].keys():
+                print "Active: {}".format(config[file_id]['ver'][args['version']]['active'])
+                print "Created: {}".format(config[file_id]['ver'][args['version']]['createdDate'])
+                print "Modified: {}".format(config[file_id]['ver'][args['version']]['modifiedDate'])
+            else:
+                raise RuntimeError("Version does not exist")
+        else:
+            if file_id not in config:
+                raise RuntimeError("File %s does not synced" % (file_id))
+            versions = get_file_versions(file_id, config)
+            print "On version '{}'".format([ver for ver in versions if config[file_id]['ver'][ver]['active']][0])
+            print "All versions:"
+            print '\n'.join("'%s'" % (ver) for ver in versions)
+
+    elif args['act'] == "sync":
         if file_id not in config:
             config[file_id] = {}
             config[file_id]['ver'] = {}
             config[file_id]['ver']['master'] = {}
             config[file_id]['ver']['master']['data'] = old_file
             config[file_id]['ver']['master']['active'] = True
+            config[file_id]['ver']['master']['createdDate'] = dt.utcnow()
 
-    if args['act'] == "checkout":
+    elif args['act'] == "checkout":
         if file_id not in config:
             raise RuntimeError("File %s does not synced" % (file_id))
         for ver in config[file_id]['ver']:
@@ -119,14 +144,18 @@ if __name__ == "__main__":
                 config[file_id]['ver'][args['version']] = {}
                 config[file_id]['ver'][args['version']]['data'] = old_file
                 config[file_id]['ver'][args['version']]['active'] = True
+                config[file_id]['ver'][args['version']]['createdDate'] = dt.utcnow()
+                config[file_id]['ver'][args['version']]['modifiedDate'] = dt.utcnow()
                 config[file_id]['ver'][to_deact]['data'] = old_file
                 config[file_id]['ver'][to_deact]['active'] = False
+                config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
             else:
                 raise RuntimeError("Version already exist")
         else:
             if args['version'] in config[file_id]['ver'].keys():
                 config[file_id]['ver'][to_deact]['data'] = old_file
                 config[file_id]['ver'][to_deact]['active'] = False
+                config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
                 file_content = config[file_id]['ver'][args['version']]['data']
                 update_file(service, file_id, file_content)
                 config[file_id]['ver'][args['version']]['active'] = True

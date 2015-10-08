@@ -4,7 +4,7 @@
 # @Date:   2015-09-04 14:04:46
 # @Email:  etrott@redhat.com
 # @Last modified by:   etrott
-# @Last Modified time: 2015-09-17 14:42:56
+# @Last Modified time: 2015-10-08 16:19:29
 
 
 # python-2.7 setup.py build
@@ -33,6 +33,8 @@ __irequires__ = [
     'argparse==1.3.0',
     'google-api-python-client==1.4.1',
     'oauth2client>=1.4.12',
+    'gutile>=0.0.2',
+    'pyyaml==3.11'
 ]
 __xrequires__ = {
     'tests': [

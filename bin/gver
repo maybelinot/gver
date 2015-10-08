@@ -18,8 +18,9 @@ from apiclient import discovery
 from apiclient.http import MediaFileUpload
 import pprint
 
+from gutile import gfiles
 from gver.utils import logr, get_credentials, config, update_config
-from gver.gfiles import get_file_id
+# from gver.gfiles import get_file_id
 from gver.gver import *
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -99,7 +100,8 @@ def get_file_id(filename, config, service, credentials):
         return filename
     except:
         # else look for file_id in drive
-        return get_file_id(credentials, filename)
+
+        return gfiles.get_file_id(credentials, filename)
 
 if __name__ == "__main__":
     # Load the user config file from their home directory

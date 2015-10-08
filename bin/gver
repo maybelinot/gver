@@ -15,6 +15,7 @@ from datetime import datetime as dt
 import httplib2
 from apiclient import errors
 from apiclient import discovery
+from apiclient.http import MediaFileUpload
 import pprint
 
 from gver.utils import logr, get_credentials, config, update_config
@@ -55,6 +56,12 @@ def parse_cli():
     download.add_argument('-o', metavar='o', nargs='?',
                           dest='output', help='Output file')
 
+    upload = subparsers.add_parser('upload')
+    upload.add_argument('format', help='Upload format', choices=[
+                          'txt', 'docx', 'html', 'odt', 'pdf', 'rtf'], default='txt')
+    upload.add_argument('-i', metavar='i', nargs='*',
+                          dest='input', help='Input file')
+
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="turn verbose logging ON")
     parser.add_argument('-d', '--debug', action='store_true',
@@ -73,8 +80,12 @@ def parse_cli():
     return args
 
 
-def get_file_versions(file_id, config):
+def get_file_versions(config, file_id):
     return [i['ver'].keys() for _, i in config.iteritems() if _ == file_id][0]
+
+def get_active_version(config, file_id):
+    versions = get_file_versions(config, file_id)
+    return [ver for ver in versions if config[file_id]['ver'][ver]['active']][0]
 
 
 def get_file_id(filename, config, service, credentials):
@@ -107,7 +118,14 @@ if __name__ == "__main__":
 
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # # UPLOAD/DOWLOAD SOLUTION
-    current_file = get_file(http, file_id)
+    current_file = get_file(service, file_id)
+
+    map_formats = {'pdf': 'application/pdf',
+                   'rtf': 'application/rtf',
+                   'odt': 'application/vnd.oasis.opendocument.text',
+                   'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                   'html': 'text/html',
+                   'txt': 'text/plain'}
 
     if args['act'] == "call":
         if file_id not in config:
@@ -125,7 +143,7 @@ if __name__ == "__main__":
         else:
             if file_id not in config:
                 raise RuntimeError("File %s does not synced" % (file_id))
-            versions = get_file_versions(file_id, config)
+            versions = get_file_versions(config, file_id)
             print "On version '{}'".format([ver for ver in versions if config[file_id]['ver'][ver]['active']][0])
             print "All versions:"
             print '\n'.join("'%s'" % (ver) for ver in versions)
@@ -142,9 +160,9 @@ if __name__ == "__main__":
     elif args['act'] == "checkout":
         if file_id not in config:
             raise RuntimeError("File %s does not synced" % (file_id))
-        for ver in config[file_id]['ver']:
-            if config[file_id]['ver'][ver]['active']:
-                to_deact = ver
+        to_deact = get_active_version(config, file_id)
+        if to_deact == args['version']:
+            raise RuntimeError("Already on %s version" % (args['version']))
         if args['new']:
             if args['version'] not in config[file_id]['ver'].keys():
                 config[file_id]['ver'][args['version']] = {}
@@ -170,12 +188,6 @@ if __name__ == "__main__":
             else:
                 raise RuntimeError("Version does not exist")
     elif args['act'] == "download":
-        map_formats = {'pdf': 'application/pdf',
-                       'rtf': 'application/rtf',
-                       'odt': 'application/vnd.oasis.opendocument.text',
-                       'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                       'html': 'text/html',
-                       'txt': 'text/plain'}
         output_file = args['output']
         downloadUrl = current_file[1].get(
             'exportLinks')[map_formats[args['format']]]
@@ -187,5 +199,11 @@ if __name__ == "__main__":
                 f.write(content)
         else:
             print(content)
+    elif args['act'] == "upload":
+        input_file = args['input'][0]
+        media = MediaFileUpload(input_file, mimetype=map_formats[args['format']])
+        update_file(service, file_id, (media, None))
+        version = get_active_version(config, file_id)
+
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     update_config(config)

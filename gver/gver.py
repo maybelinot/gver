@@ -4,7 +4,7 @@
 # @Date:   2015-09-16 11:28:21
 # @Email:  etrott@redhat.com
 # @Last modified by:   etrott
-# @Last Modified time: 2015-10-08 11:48:37
+# @Last Modified time: 2015-10-08 13:10:41
 
 
 import os
@@ -42,7 +42,7 @@ def get_file(http, file_id):
         service = discovery.build('drive', 'v2', http=http)
         meta_data = service.files().get(fileId=file_id).execute()
 
-        url = meta_data['exportLinks']['text/html']
+        url = meta_data.get('exportLinks')['text/html']
         response, content = http.request(url)
         media_data = MediaIoBaseUpload(
             StringIO(content), 'text/html', resumable=False)

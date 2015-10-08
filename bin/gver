@@ -37,10 +37,10 @@ def parse_cli():
     subparsers = parser.add_subparsers(dest='act', help="Actions")
 
     checkout = subparsers.add_parser('checkout')
-
     checkout.add_argument('version', help='File version name')
     checkout.add_argument('-n', '--new', action='store_true',
                           help="Create new version")
+
     sync = subparsers.add_parser('sync')
 
     status = subparsers.add_parser('status')
@@ -48,6 +48,12 @@ def parse_cli():
 
     call = subparsers.add_parser('call')
     call.add_argument('name', help='File name')
+
+    download = subparsers.add_parser('download')
+    download.add_argument('format', help='Export format', choices=[
+                          'txt', 'docx', 'html', 'odt', 'pdf', 'rtf'], default='txt')
+    download.add_argument('-o', metavar='o', nargs='?',
+                          dest='output', help='Output file')
 
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="turn verbose logging ON")
@@ -101,7 +107,7 @@ if __name__ == "__main__":
 
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # # UPLOAD/DOWLOAD SOLUTION
-    old_file = get_file(http, file_id)
+    current_file = get_file(http, file_id)
 
     if args['act'] == "call":
         if file_id not in config:
@@ -129,7 +135,7 @@ if __name__ == "__main__":
             config[file_id] = {}
             config[file_id]['ver'] = {}
             config[file_id]['ver']['master'] = {}
-            config[file_id]['ver']['master']['data'] = old_file
+            config[file_id]['ver']['master']['data'] = current_file
             config[file_id]['ver']['master']['active'] = True
             config[file_id]['ver']['master']['createdDate'] = dt.utcnow()
 
@@ -142,18 +148,20 @@ if __name__ == "__main__":
         if args['new']:
             if args['version'] not in config[file_id]['ver'].keys():
                 config[file_id]['ver'][args['version']] = {}
-                config[file_id]['ver'][args['version']]['data'] = old_file
+                config[file_id]['ver'][args['version']]['data'] = current_file
                 config[file_id]['ver'][args['version']]['active'] = True
-                config[file_id]['ver'][args['version']]['createdDate'] = dt.utcnow()
-                config[file_id]['ver'][args['version']]['modifiedDate'] = dt.utcnow()
-                config[file_id]['ver'][to_deact]['data'] = old_file
+                config[file_id]['ver'][args['version']][
+                    'createdDate'] = dt.utcnow()
+                config[file_id]['ver'][args['version']][
+                    'modifiedDate'] = dt.utcnow()
+                config[file_id]['ver'][to_deact]['data'] = current_file
                 config[file_id]['ver'][to_deact]['active'] = False
                 config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
             else:
                 raise RuntimeError("Version already exist")
         else:
             if args['version'] in config[file_id]['ver'].keys():
-                config[file_id]['ver'][to_deact]['data'] = old_file
+                config[file_id]['ver'][to_deact]['data'] = current_file
                 config[file_id]['ver'][to_deact]['active'] = False
                 config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
                 file_content = config[file_id]['ver'][args['version']]['data']
@@ -161,6 +169,23 @@ if __name__ == "__main__":
                 config[file_id]['ver'][args['version']]['active'] = True
             else:
                 raise RuntimeError("Version does not exist")
+    elif args['act'] == "download":
+        map_formats = {'pdf': 'application/pdf',
+                       'rtf': 'application/rtf',
+                       'odt': 'application/vnd.oasis.opendocument.text',
+                       'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                       'html': 'text/html',
+                       'txt': 'text/plain'}
+        output_file = args['output']
+        downloadUrl = current_file[1].get(
+            'exportLinks')[map_formats[args['format']]]
 
+        resp, content = service._http.request(downloadUrl)
+
+        if output_file:
+            with open(output_file, 'wb') as f:
+                f.write(content)
+        else:
+            print(content)
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     update_config(config)

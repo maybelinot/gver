@@ -18,7 +18,7 @@ import pprint
 
 from gver.utils import logr, get_credentials, config, update_config
 from gver.gfiles import get_file_id
-from gver.gver import get_file_content, update_file
+from gver.gver import *
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -42,6 +42,9 @@ def parse_cli():
                           help="Create new version")
     sync = subparsers.add_parser('sync')
 
+    call = subparsers.add_parser('call')
+    call.add_argument('name', help='File name')
+
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="turn verbose logging ON")
     parser.add_argument('-d', '--debug', action='store_true',
@@ -59,6 +62,20 @@ def parse_cli():
 
     return args
 
+
+def get_file_id(filename, config, service, credentials):
+    if filename in [i['name'] for _, i in config.iteritems()
+                    if 'name' in i.keys()]:
+        return [_ for _, i in config.iteritems()
+                if 'name' in i.keys() and i['name'] == filename][0]
+    try:
+        # if gfile is file_id
+        service.files().get(fileId=filename).execute()
+        return filename
+    except:
+        # else look for file_id in drive
+        return get_file_id(credentials, filename)
+
 if __name__ == "__main__":
     # Load the user config file from their home directory
     args = parse_cli()
@@ -69,50 +86,52 @@ if __name__ == "__main__":
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('drive', 'v2', http=http)
 
-    try:
-        # if gfile is file_id
-        service.files().get(fileId=filename).execute()
-        file_id = filename
-    except:
-        # else look for file_id in drive
-        file_id = get_file_id(credentials, filename)
+    file_id = get_file_id(filename, config, service, credentials)
 
     if not file_id:
         raise RuntimeError('File %s does not exist' % (filename))
 
-    # revisions = retrieve_revisions(service, file_id)
-    old_file = get_file_content(http, file_id)
+    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # # UPLOAD/DOWLOAD SOLUTION
+    old_file = get_file(http, file_id)
+
+    if args['act'] == "call":
+        if file_id not in config:
+            raise RuntimeError("File %s does not synced" % (file_id))
+        config[file_id]['name'] = args['name']
 
     if args['act'] == "sync":
         if file_id not in config:
             config[file_id] = {}
-            config[file_id]['master'] = {}
-            config[file_id]['master']['data'] = old_file
-            config[file_id]['master']['active'] = True
+            config[file_id]['ver'] = {}
+            config[file_id]['ver']['master'] = {}
+            config[file_id]['ver']['master']['data'] = old_file
+            config[file_id]['ver']['master']['active'] = True
 
     if args['act'] == "checkout":
         if file_id not in config:
-            raise RuntimeError("File does not synced")
-        for ver in config[file_id]:
-            if config[file_id][ver]['active']:
+            raise RuntimeError("File %s does not synced" % (file_id))
+        for ver in config[file_id]['ver']:
+            if config[file_id]['ver'][ver]['active']:
                 to_deact = ver
         if args['new']:
-            if args['version'] not in config[file_id].keys():
-                config[file_id][args['version']] = {}
-                config[file_id][args['version']]['data'] = old_file
-                config[file_id][args['version']]['active'] = True
-                config[file_id][to_deact]['data'] = old_file
-                config[file_id][to_deact]['active'] = False
+            if args['version'] not in config[file_id]['ver'].keys():
+                config[file_id]['ver'][args['version']] = {}
+                config[file_id]['ver'][args['version']]['data'] = old_file
+                config[file_id]['ver'][args['version']]['active'] = True
+                config[file_id]['ver'][to_deact]['data'] = old_file
+                config[file_id]['ver'][to_deact]['active'] = False
             else:
                 raise RuntimeError("Version already exist")
         else:
-            if args['version'] in config[file_id].keys():
-                config[file_id][to_deact]['data'] = old_file
-                config[file_id][to_deact]['active'] = False
-                file_content = config[file_id][args['version']]['data']
+            if args['version'] in config[file_id]['ver'].keys():
+                config[file_id]['ver'][to_deact]['data'] = old_file
+                config[file_id]['ver'][to_deact]['active'] = False
+                file_content = config[file_id]['ver'][args['version']]['data']
                 update_file(service, file_id, file_content)
-                config[file_id][args['version']]['active'] = True
+                config[file_id]['ver'][args['version']]['active'] = True
             else:
                 raise RuntimeError("Version does not exist")
 
+    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     update_config(config)

@@ -4,7 +4,7 @@
 # @Date:   2015-09-16 11:28:21
 # @Email:  etrott@redhat.com
 # @Last modified by:   etrott
-# @Last Modified time: 2015-10-06 15:53:46
+# @Last Modified time: 2015-10-08 11:48:37
 
 
 import os
@@ -20,59 +20,32 @@ from StringIO import StringIO
 from utils import logr
 
 
-def update_file(service, file_id, media_body):
-    """Update an existing file's metadata and content.
-
-    Args:
-      service: Drive API service instance.
-      file_id: ID of the file to update.
-      new_title: New title for the file.
-      new_description: New description for the file.
-      new_mime_type: New MIME type for the file.
-      new_filename: Filename of the new content to upload.
-      new_revision: Whether or not to create a new revision for this file.
-    Returns:
-      Updated file metadata if successful, None otherwise.
-    """
+def update_file(service, file_id, data):
+    """Update an existing file's metadata and content."""
     try:
-        # First retrieve the file from the API.
-        file = service.files().get(fileId=file_id).execute()
-        print(file)
-        # File's new content.
-        # media_body = MediaFileUpload(
-        #     new_filename, mimetype=new_mime_type, resumable=True)
-
+        media_data, meta_data = data
         # Send the request to the API.
         updated_file = service.files().update(
             fileId=file_id,
-            body=file,
+            body=meta_data,
             newRevision=True,
-            media_body=media_body).execute()
+            media_body=media_data).execute()
         return updated_file
     except errors.HttpError, error:
         print 'An error occurred: %s' % error
         return None
 
 
-def get_file_content(http, file_id):
-    """Print a file's content.
-
-    Args:
-      service: Drive API service instance.
-      file_id: ID of the file.
-
-    Returns:
-      File's content if successful, None otherwise.
-    """
+def get_file(http, file_id):
+    """Print a file's content"""
     try:
         service = discovery.build('drive', 'v2', http=http)
+        meta_data = service.files().get(fileId=file_id).execute()
 
-        url = service.files().get(fileId=file_id).execute()[
-            'exportLinks']['text/html']
+        url = meta_data['exportLinks']['text/html']
         response, content = http.request(url)
-        print(content)
-        media_body = MediaIoBaseUpload(
+        media_data = MediaIoBaseUpload(
             StringIO(content), 'text/html', resumable=False)
-        return media_body
+        return media_data, meta_data
     except errors.HttpError, error:
         print 'An error occurred: %s' % error

@@ -4,7 +4,7 @@
 # @Date:   2015-09-11 10:57:06
 # @Email:  etrott@redhat.com
 # @Last modified by:   etrott
-# @Last Modified time: 2015-10-08 15:42:00
+# @Last Modified time: 2015-10-09 11:56:03
 
 from __future__ import unicode_literals, absolute_import
 
@@ -12,6 +12,8 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
+import json
 
 import yaml
 from oauth2client import file, client, tools
@@ -21,7 +23,10 @@ logging.basicConfig(format='>> %(message)s')
 logr = logging.getLogger('members')
 
 # History file
-CONFIG_FILE = os.path.expanduser('~/.gver')
+directory = os.path.expanduser('~/.gver/')
+if not os.path.exists(directory):
+    os.makedirs(directory)
+CONFIG_FILE = os.path.join(directory, 'config')
 if os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE) as _:
         config = yaml.load(_)
@@ -41,6 +46,17 @@ SCOPES = ('https://www.googleapis.com/auth/drive.metadata.readonly '
           'https://spreadsheets.google.com/feeds '
           'https://docs.google.com/feeds')
 
+def export_local_file(data):
+    f = tempfile.NamedTemporaryFile(dir=directory, delete=False)
+    yaml.dump(data, f)
+    f.close()
+    return os.path.split(f.name)[1]
+
+def import_local_file(filename):
+    with open(os.path.join(directory, filename)) as f:
+        content = yaml.load(f)
+        return content
+    return None
 
 def update_config(dct):
     with open(CONFIG_FILE, "w") as _:

@@ -19,7 +19,7 @@ from apiclient.http import MediaFileUpload
 import pprint
 
 from gutile import gfiles
-from gver.utils import logr, get_credentials, config, update_config
+from gver.utils import logr, get_credentials, config, update_config, export_local_file, import_local_file
 # from gver.gfiles import get_file_id
 from gver.gver import *
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
             config[file_id] = {}
             config[file_id]['ver'] = {}
             config[file_id]['ver']['master'] = {}
-            config[file_id]['ver']['master']['data'] = current_file
+            config[file_id]['ver']['master']['data'] = export_local_file(current_file)
             config[file_id]['ver']['master']['active'] = True
             config[file_id]['ver']['master']['createdDate'] = dt.utcnow()
 
@@ -168,23 +168,23 @@ if __name__ == "__main__":
         if args['new']:
             if args['version'] not in config[file_id]['ver'].keys():
                 config[file_id]['ver'][args['version']] = {}
-                config[file_id]['ver'][args['version']]['data'] = current_file
+                config[file_id]['ver'][args['version']]['data'] = export_local_file(current_file)
                 config[file_id]['ver'][args['version']]['active'] = True
                 config[file_id]['ver'][args['version']][
                     'createdDate'] = dt.utcnow()
                 config[file_id]['ver'][args['version']][
                     'modifiedDate'] = dt.utcnow()
-                config[file_id]['ver'][to_deact]['data'] = current_file
+                config[file_id]['ver'][to_deact]['data'] = export_local_file(current_file)
                 config[file_id]['ver'][to_deact]['active'] = False
                 config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
             else:
                 raise RuntimeError("Version already exist")
         else:
             if args['version'] in config[file_id]['ver'].keys():
-                config[file_id]['ver'][to_deact]['data'] = current_file
+                config[file_id]['ver'][to_deact]['data'] = export_local_file(current_file)
                 config[file_id]['ver'][to_deact]['active'] = False
                 config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
-                file_content = config[file_id]['ver'][args['version']]['data']
+                file_content = import_local_file(config[file_id]['ver'][args['version']]['data'])
                 update_file(service, file_id, file_content)
                 config[file_id]['ver'][args['version']]['active'] = True
             else:

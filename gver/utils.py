@@ -4,7 +4,7 @@
 # @Date:   2015-09-11 10:57:06
 # @Email:  etrott@redhat.com
 # @Last modified by:   etrott
-# @Last Modified time: 2015-10-09 11:56:03
+# @Last Modified time: 2015-10-22 14:59:03
 
 from __future__ import unicode_literals, absolute_import
 
@@ -46,17 +46,20 @@ SCOPES = ('https://www.googleapis.com/auth/drive.metadata.readonly '
           'https://spreadsheets.google.com/feeds '
           'https://docs.google.com/feeds')
 
+
 def export_local_file(data):
     f = tempfile.NamedTemporaryFile(dir=directory, delete=False)
     yaml.dump(data, f)
     f.close()
     return os.path.split(f.name)[1]
 
+
 def import_local_file(filename):
     with open(os.path.join(directory, filename)) as f:
         content = yaml.load(f)
         return content
     return None
+
 
 def update_config(dct):
     with open(CONFIG_FILE, "w") as _:
@@ -79,6 +82,21 @@ def run(cmd):
             logr.error(errors)
         sys.exit(process.returncode)
     return output, errors
+
+
+def output_via_editor(editor, content):
+    """Launch editor on an empty temporary file, wait for it to exit, and
+    if it exited successfully, return the contents of the file.
+
+    """
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+        f.write(content)
+        f.close()
+        try:
+            subprocess.check_call([editor, f.name])
+        except subprocess.CalledProcessError as e:
+            raise IOError("{} exited with code {}.".format(
+                editor, e.returncode))
 
 
 def get_credentials():

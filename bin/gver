@@ -57,11 +57,14 @@ def parse_cli():
     download.add_argument('-o', metavar='o', nargs='?',
                           dest='output', help='Output file')
 
+    remove = subparsers.add_parser('remove')
+    remove.add_argument('version', help='File version name')
+
     upload = subparsers.add_parser('upload')
     upload.add_argument('format', help='Upload format', choices=[
-                          'txt', 'docx', 'html', 'odt', 'pdf', 'rtf'], default='txt')
+        'txt', 'docx', 'html', 'odt', 'pdf', 'rtf'], default='txt')
     upload.add_argument('-i', metavar='i', nargs='*',
-                          dest='input', help='Input file')
+                        dest='input', help='Input file')
 
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="turn verbose logging ON")
@@ -83,6 +86,7 @@ def parse_cli():
 
 def get_file_versions(config, file_id):
     return [i['ver'].keys() for _, i in config.iteritems() if _ == file_id][0]
+
 
 def get_active_version(config, file_id):
     versions = get_file_versions(config, file_id)
@@ -155,7 +159,8 @@ if __name__ == "__main__":
             config[file_id] = {}
             config[file_id]['ver'] = {}
             config[file_id]['ver']['master'] = {}
-            config[file_id]['ver']['master']['data'] = export_local_file(current_file)
+            config[file_id]['ver']['master'][
+                'data'] = export_local_file(current_file)
             config[file_id]['ver']['master']['active'] = True
             config[file_id]['ver']['master']['createdDate'] = dt.utcnow()
 
@@ -168,23 +173,30 @@ if __name__ == "__main__":
         if args['new']:
             if args['version'] not in config[file_id]['ver'].keys():
                 config[file_id]['ver'][args['version']] = {}
-                config[file_id]['ver'][args['version']]['data'] = export_local_file(current_file)
+                config[file_id]['ver'][args['version']][
+                    'data'] = export_local_file(current_file)
                 config[file_id]['ver'][args['version']]['active'] = True
                 config[file_id]['ver'][args['version']][
                     'createdDate'] = dt.utcnow()
                 config[file_id]['ver'][args['version']][
                     'modifiedDate'] = dt.utcnow()
-                config[file_id]['ver'][to_deact]['data'] = export_local_file(current_file)
+                # config[file_id]['ver'][to_deact]['data'] = export_local_file(current_file)
                 config[file_id]['ver'][to_deact]['active'] = False
                 config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
             else:
                 raise RuntimeError("Version already exist")
         else:
             if args['version'] in config[file_id]['ver'].keys():
-                config[file_id]['ver'][to_deact]['data'] = export_local_file(current_file)
+                path = os.path.join(os.path.expanduser(
+                    '~/.gver/'), config[file_id]['ver'][to_deact]['data'])
+                if os.path.exists(path):
+                    os.remove(path)
+                config[file_id]['ver'][to_deact][
+                    'data'] = export_local_file(current_file)
                 config[file_id]['ver'][to_deact]['active'] = False
                 config[file_id]['ver'][to_deact]['modifiedDate'] = dt.utcnow()
-                file_content = import_local_file(config[file_id]['ver'][args['version']]['data'])
+                file_content = import_local_file(
+                    config[file_id]['ver'][args['version']]['data'])
                 update_file(service, file_id, file_content)
                 config[file_id]['ver'][args['version']]['active'] = True
             else:
@@ -203,9 +215,20 @@ if __name__ == "__main__":
             print(content)
     elif args['act'] == "upload":
         input_file = args['input'][0]
-        media = MediaFileUpload(input_file, mimetype=map_formats[args['format']])
+        media = MediaFileUpload(
+            input_file, mimetype=map_formats[args['format']])
         update_file(service, file_id, (media, None))
         version = get_active_version(config, file_id)
+    elif args['act'] == "remove":
+        if file_id not in config:
+            raise RuntimeError("File %s does not synced" % (file_id))
+        if args['version'] == get_active_version(config, file_id):
+            raise RuntimeError("Can not delete current version" % (file_id))
+        file_to_delete = config[file_id]['ver'][args['version']]['data']
+        path = os.path.join(os.path.expanduser('~/.gver/'), file_to_delete)
+        if os.path.exists(path):
+            os.remove(path)
+        del config[file_id]['ver'][args['version']]
 
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     update_config(config)

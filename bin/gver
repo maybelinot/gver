@@ -16,6 +16,9 @@ import httplib2
 from apiclient import errors
 from apiclient import discovery
 from apiclient.http import MediaFileUpload
+import webbrowser
+
+
 # import pprint
 
 from gutile import gfiles
@@ -37,35 +40,41 @@ def parse_cli():
 
     subparsers = parser.add_subparsers(dest='act', help="Actions")
 
-    checkout = subparsers.add_parser('checkout')
+    checkout = subparsers.add_parser('checkout', help="Swith to another version or create one")
     checkout.add_argument('version', help='File version name')
-    checkout.add_argument('-n', '--new', action='store_true',
+    checkout.add_argument('-b', '--new', action='store_true',
                           help="Create new version")
 
-    sync = subparsers.add_parser('sync')
+    sync = subparsers.add_parser(
+        'sync', help="Connect gFile with local DataBase")
 
-    status = subparsers.add_parser('status')
+    status = subparsers.add_parser(
+        'status', help="Show the working file status")
     status.add_argument('version', help='File name', nargs='?')
 
-    call = subparsers.add_parser('call')
+    call = subparsers.add_parser('call', help="Set up label to file ID")
     call.add_argument('name', help='File name')
 
-    download = subparsers.add_parser('download')
+    download = subparsers.add_parser(
+        'download', help="Download file in particular format")
     download.add_argument('format', help='Export format', choices=[
                           'txt', 'docx', 'html', 'odt', 'pdf', 'rtf'], default='txt')
     download.add_argument('-o', metavar='o', nargs='?',
                           dest='output', help='Output file')
-    download.add_argument('-e', metavar='e', nargs='?', choices=['vi','subl','nano'],
+    download.add_argument('-e', metavar='e', nargs='?', choices=['vi', 'subl', 'nano'],
                           dest='editor', help='Open with editor')
 
-    remove = subparsers.add_parser('remove')
+    remove = subparsers.add_parser('remove', help="Remove particular version")
     remove.add_argument('version', help='File version name')
 
-    upload = subparsers.add_parser('upload')
+    upload = subparsers.add_parser(
+        'upload', help="Upload file in particular format")
     upload.add_argument('format', help='Upload format', choices=[
         'txt', 'docx', 'html', 'odt', 'pdf', 'rtf'], default='txt')
     upload.add_argument('-i', metavar='i', nargs='*',
                         dest='input', help='Input file')
+
+    launch = subparsers.add_parser('launch', help="Launch file in browser")
 
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="turn verbose logging ON")
@@ -242,6 +251,9 @@ if __name__ == "__main__":
         if os.path.exists(path):
             os.remove(path)
         del config[file_id]['ver'][args['version']]
+    elif args['act'] == "launch":
+        url = current_file[1]['alternateLink']
+        webbrowser.open_new_tab(url)
 
     # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     update_config(config)

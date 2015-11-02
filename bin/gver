@@ -40,7 +40,8 @@ def parse_cli():
 
     subparsers = parser.add_subparsers(dest='act', help="Actions")
 
-    checkout = subparsers.add_parser('checkout', help="Swith to another version or create one")
+    checkout = subparsers.add_parser(
+        'checkout', help="Swith to another version or create one")
     checkout.add_argument('version', help='File version name')
     checkout.add_argument('-b', '--new', action='store_true',
                           help="Create new version")
@@ -146,8 +147,11 @@ if __name__ == "__main__":
     if args['act'] == "call":
         if file_id not in config:
             raise RuntimeError("File %s does not synced" % (file_id))
-        config[file_id]['name'] = args['name']
+        if args['name'] in [i['name'] for k, i in config.iteritems() if 'name' in i.keys() and k != file_id]:
+            raise RuntimeError(
+                "Provided name already linked to another file_id")
 
+        config[file_id]['name'] = args['name']
     elif args['act'] == "status":
         if args['version']:
             if args['version'] in config[file_id]['ver'].keys():

@@ -19,13 +19,9 @@ from apiclient.http import MediaFileUpload
 import webbrowser
 
 
-# import pprint
-
 from gutile import gfiles
 from gver.utils import logr, get_credentials, config, update_config, export_local_file, import_local_file, output_via_editor
 from gver.gver import *
-
-# pp = pprint.PrettyPrinter(indent=4)
 
 
 def parse_cli():
@@ -45,6 +41,9 @@ def parse_cli():
     checkout.add_argument('version', help='File version name')
     checkout.add_argument('-b', '--new', action='store_true',
                           help="Create new version")
+
+    init = subparsers.add_parser(
+        'init', help="Create new File and linked it with local DataBase")
 
     sync = subparsers.add_parser(
         'sync', help="Connect gFile with local DataBase")
@@ -104,7 +103,7 @@ def get_active_version(config, file_id):
     return [ver for ver in versions if config[file_id]['ver'][ver]['active']][0]
 
 
-def get_file_id(filename, config, service, credentials):
+def get_file_id(filename, config, service, credentials, write_access=False):
     if filename in [i['name'] for _, i in config.iteritems()
                     if 'name' in i.keys()]:
         return [_ for _, i in config.iteritems()
@@ -116,7 +115,9 @@ def get_file_id(filename, config, service, credentials):
     except:
         # else look for file_id in drive
 
-        return gfiles.get_file_id(credentials, filename)
+        return gfiles.get_file_id(credentials, filename,
+                                  write_access=write_access,
+                                  ftype='document')
 
 if __name__ == "__main__":
     # Load the user config file from their home directory
@@ -128,7 +129,10 @@ if __name__ == "__main__":
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('drive', 'v2', http=http)
 
-    file_id = get_file_id(filename, config, service, credentials)
+    if args['act'] == 'init':
+        file_id = get_file_id(filename, config, service, credentials, True)
+    else:
+        file_id = get_file_id(filename, config, service, credentials)
 
     if not file_id:
         raise RuntimeError('File %s does not exist' % (filename))
@@ -150,7 +154,6 @@ if __name__ == "__main__":
         if args['name'] in [i['name'] for k, i in config.iteritems() if 'name' in i.keys() and k != file_id]:
             raise RuntimeError(
                 "Provided name already linked to another file_id")
-
         config[file_id]['name'] = args['name']
     elif args['act'] == "status":
         if args['version']:
@@ -167,8 +170,7 @@ if __name__ == "__main__":
             print "On version '{}'".format([ver for ver in versions if config[file_id]['ver'][ver]['active']][0])
             print "All versions:"
             print '\n'.join("'%s'" % (ver) for ver in versions)
-
-    elif args['act'] == "sync":
+    elif args['act'] == "sync" or args['act'] == "init":
         if file_id not in config:
             config[file_id] = {}
             config[file_id]['ver'] = {}
@@ -177,7 +179,6 @@ if __name__ == "__main__":
                 'data'] = export_local_file(current_file)
             config[file_id]['ver']['master']['active'] = True
             config[file_id]['ver']['master']['createdDate'] = dt.utcnow()
-
     elif args['act'] == "checkout":
         if file_id not in config:
             raise RuntimeError("File %s does not synced" % (file_id))

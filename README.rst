@@ -20,9 +20,9 @@ Example install, using VirtualEnv::
 
 ACCESS CREDENTIALS
 ==================
-To allow a script to use Google Drive API we need to authenticate our self 
-towards Google.  To do so, we need to create a project, describing the tool 
-and generate credentials. Please use your web browser and go to 
+To allow a script to use Google Drive API we need to authenticate our self
+towards Google.  To do so, we need to create a project, describing the tool
+and generate credentials. Please use your web browser and go to
 `Google console <https://console.developers.google.com>`_ and :
 
 * Click on the button **"Create Project"**.
@@ -36,7 +36,7 @@ and generate credentials. Please use your web browser and go to
 * On the left-side menu click on **"APIS & auth"** -> **"Credentials"**.
 
 * In section **"OAuth"** click on **"Create new client ID"** button
-      
+
 * A dialog box appears. Select **"Installed application"** item and click on **"Configure consent screen"**.
 
 * From drop-down box select your email address and give your product a name. Then click on **"Save"** button.
@@ -45,6 +45,37 @@ and generate credentials. Please use your web browser and go to
 
 * Click on **"Create Client ID"** button.
 
-* Click on **"Download JSON"** button and store the downloaded file on your file system. Please be aware, the file contains your private credentials, so take care of the file in the same way you care of your private SSH key; i.e. move downloaded JSON file to **~/.gdrive_private**. 
+* Click on **"Download JSON"** button and store the downloaded file on your file system. Please be aware, the file contains your private credentials, so take care of the file in the same way you care of your private SSH key; i.e. move downloaded JSON file to **~/.gdrive_private**.
 
 * Then, the first time you run it your browswer window will open a google authorization request page. Approve authorization and then the credentials will work as expected.
+
+USAGE
+=====
+
+.. code-block:: python
+
+  $ gver --help
+  usage: gver [-h] [-v] [-d]
+              FILE
+              {status,launch,sync,remove,upload,init,call,download,checkout} ...
+
+  Control version of Google files
+
+  positional arguments:
+    FILE                  Full path to file or file id
+    {status,launch,sync,remove,upload,init,call,download,checkout}
+                          Actions
+      checkout            Swith to another version or create one
+      init                Create new File and linked it with local DataBase
+      sync                Connect gFile with local DataBase
+      status              Show the working file status
+      call                Set up label to file ID
+      download            Download file in particular format
+      remove              Remove particular version
+      upload              Upload file in particular format
+      launch              Launch file in browser
+
+  optional arguments:
+    -h, --help            show this help message and exit
+    -v, --verbose         turn verbose logging ON
+    -d, --debug           turn debug logging ON
